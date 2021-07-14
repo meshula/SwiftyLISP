@@ -22,6 +22,8 @@
  *  SOFTWARE.
  */
 
+// source: https://github.com/uraimo/SwiftyLISP
+
 import Foundation
 
 /**
@@ -97,7 +99,7 @@ public enum SExpr{
         
         if locals.contains(v) {
             // The current atom is a variable, replace it with its value
-            return values[locals.index(of: v)!]
+            return values[locals.firstIndex(of: v)!]
         }else{
             // Not a variable, just return it
             return v
@@ -181,29 +183,62 @@ extension SExpr {
          
          - Parameter sexpr: Stringified S-Expression
          - Returns: Series of tokens
+         
+            - Nick added quote delimited strings as tokens
          */
         func tokenize(_ sexpr:String) -> [Token] {
             var res = [Token]()
             var tmpText = ""
             
+            var inString = false
+            
             for c in sexpr {
                 switch c {
+                case "\"":
+                    if inString {
+                        res.append(.textBlock(tmpText))
+                        tmpText = ""
+                        inString = false
+                    }
+                    else {
+                        // not in a string; append any accumulated text
+                        if tmpText != "" {
+                            res.append(.textBlock(tmpText))
+                            tmpText = ""
+                        }
+                        inString = true
+                    }
                 case "(":
-                    if tmpText != "" {
-                        res.append(.textBlock(tmpText))
-                        tmpText = ""
+                    if !inString {
+                        if tmpText != "" {
+                            res.append(.textBlock(tmpText))
+                            tmpText = ""
+                        }
+                        res.append(.pOpen)
                     }
-                    res.append(.pOpen)
+                    else {
+                        tmpText.append(c)
+                    }
                 case ")":
-                    if tmpText != "" {
-                        res.append(.textBlock(tmpText))
-                        tmpText = ""
+                    if !inString {
+                        if tmpText != "" {
+                            res.append(.textBlock(tmpText))
+                            tmpText = ""
+                        }
+                        res.append(.pClose)
                     }
-                    res.append(.pClose)
+                    else {
+                        tmpText.append(c)
+                    }
                 case " ":
-                    if tmpText != "" {
-                        res.append(.textBlock(tmpText))
-                        tmpText = ""
+                    if !inString {
+                        if tmpText != "" {
+                            res.append(.textBlock(tmpText))
+                            tmpText = ""
+                        }
+                    }
+                    else {
+                        tmpText.append(c)
                     }
                 default:
                     tmpText.append(c)
@@ -454,5 +489,4 @@ private var defaultEnvironment: [String: (SExpr, [SExpr]?, [SExpr]?)->SExpr] = {
     
     return env
 }()
-
 
